@@ -1,10 +1,15 @@
 # simulator.py
 from grid_game import GridHuntGame
 from agent import GreedyGridAgent
+from agent import ModelBasedAgent
+from visual_grid_game import VisualGridHuntGame
 
 def run_grid_hunt():
-    env = GridHuntGame()
-    agent = GreedyGridAgent()
+
+    #replaced enviorement of the game and the agent
+    env = VisualGridHuntGame()
+    agent = ModelBasedAgent()
+    
 
     print("=== UC Berkeley Style Small Grid Hunt Started ===")
     while not env.is_done():

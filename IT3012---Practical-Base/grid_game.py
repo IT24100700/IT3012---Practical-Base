@@ -8,11 +8,11 @@ class GridHuntGame:
     def __init__(self, width=4, height=4):
         self.width = width
         self.height = height
-        self.agent_pos = [0, 0]
+        self.agent_pos = [0, 0]  # Starting position (x, y)
 
-        self.food_positions = {(1, 2), (2, 3), (3, 0), (2, 1)}
-        self.walls = {(1, 1), (2, 2)}
-        self.traps = {(0, 1), (3, 2)}  # Define trap coordinates
+        # Place a few random food pellets and obstacles (walls)
+        self.food_positions = {[1, 2], [2, 3], [3, 0], [2, 1]}
+        self.walls = {[1, 1], [2, 2]}
 
         self.score = 0
         self.steps = 0
@@ -22,7 +22,6 @@ class GridHuntGame:
             'agent_pos': list(self.agent_pos),
             'smells_food': tuple(self.agent_pos) in self.food_positions,
             'hit_wall': tuple(self.agent_pos) in self.walls,
-            'on_trap': tuple(self.agent_pos) in self.traps,  # Trap percept
             'score': self.score,
             'remaining_food': len(self.food_positions)
         }
@@ -40,18 +39,17 @@ class GridHuntGame:
         elif action == 'Right':
             new_pos[0] = min(self.width - 1, new_pos[0] + 1)
 
-        # Check wall collision
+        # Check collision with walls
         if tuple(new_pos) in self.walls:
-            self.score -= 5
+            self.score -= 5  # Penalty for hitting a wall
         else:
             self.agent_pos = new_pos
 
-        # Check trap penalty
+        # Check if eating food
         tuple_pos = tuple(self.agent_pos)
-        if tuple_pos in self.traps:
-            self.score -= 15  # Trap penalty
-
-        # Check food collection
         if tuple_pos in self.food_positions:
             self.food_positions.remove(tuple_pos)
-            self.score += 20
+            self.score += 20  # Reward for eating food pellet
+
+    def is_done(self) -> bool:
+        return len(self.food_positions) == 0 or self.steps >= 20

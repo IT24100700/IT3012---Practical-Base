@@ -10,17 +10,16 @@ class VisualGridHuntGame:
         self.width = width
         self.height = height
         self.agent_pos = [0, 0]  # Starting position (x, y)
+        self.agent_dir = 'Up'   # Direction facing for forward movement support
 
         if custom_walls is not None:
             self.walls = set(custom_walls)
         else:
-            # Generate default scattered walls
             self.walls = {(2, 2), (2, 3), (5, 5), (6, 5), (3, 7)}
 
         if custom_traps is not None:
             self.traps = set(custom_traps)
         else:
-            # Generate default static traps
             self.traps = {(1, 4), (4, 2), (7, 6), (8, 3)}
 
         # Dynamically generate random food positions avoiding walls, traps, and agent start
@@ -51,6 +50,7 @@ class VisualGridHuntGame:
     def get_percept(self) -> dict:
         return {
             'agent_pos': list(self.agent_pos),
+            'agent_dir': self.agent_dir,
             'opponent_positions': [list(op) for op in self.opponents],
             'smells_food': tuple(self.agent_pos) in self.food_positions,
             'hit_wall': tuple(self.agent_pos) in self.walls,
@@ -64,14 +64,36 @@ class VisualGridHuntGame:
         self.steps += 1
         new_pos = list(self.agent_pos)
 
-        if action == 'Up':
+        # Map movement actions (Supports standard directions and forward/turn commands)
+        action_clean = str(action).strip().lower()
+
+        if action_clean in ['up', 'north']:
             new_pos[1] = min(self.height - 1, new_pos[1] + 1)
-        elif action == 'Down':
+            self.agent_dir = 'Up'
+        elif action_clean in ['down', 'south']:
             new_pos[1] = max(0, new_pos[1] - 1)
-        elif action == 'Left':
+            self.agent_dir = 'Down'
+        elif action_clean in ['left', 'west']:
             new_pos[0] = max(0, new_pos[0] - 1)
-        elif action == 'Right':
+            self.agent_dir = 'Left'
+        elif action_clean in ['right', 'east']:
             new_pos[0] = min(self.width - 1, new_pos[0] + 1)
+            self.agent_dir = 'Right'
+        elif action_clean in ['move_forward', 'forward', 'move']:
+            if self.agent_dir == 'Up':
+                new_pos[1] = min(self.height - 1, new_pos[1] + 1)
+            elif self.agent_dir == 'Down':
+                new_pos[1] = max(0, new_pos[1] - 1)
+            elif self.agent_dir == 'Left':
+                new_pos[0] = max(0, new_pos[0] - 1)
+            elif self.agent_dir == 'Right':
+                new_pos[0] = min(self.width - 1, new_pos[0] + 1)
+        elif action_clean in ['turn_left', 'turnleft']:
+            dirs = ['Up', 'Left', 'Down', 'Right']
+            self.agent_dir = dirs[(dirs.index(self.agent_dir) + 1) % 4]
+        elif action_clean in ['turn_right', 'turnright']:
+            dirs = ['Up', 'Right', 'Down', 'Left']
+            self.agent_dir = dirs[(dirs.index(self.agent_dir) + 1) % 4]
 
         # Wall collision check
         if tuple(new_pos) in self.walls:
@@ -81,7 +103,7 @@ class VisualGridHuntGame:
 
         tuple_pos = tuple(self.agent_pos)
 
-        # Trap check: apply score penalty if standing on a trap
+        # Trap check: apply penalty if standing on a trap
         if tuple_pos in self.traps:
             self.score -= 15
 
@@ -115,7 +137,7 @@ class GridGameGUI:
 
     def __init__(self, root, width=10, height=10, num_food=12, num_opponents=2, walls=None, traps=None):
         self.root = root
-        self.root.title("IT3012 - Scalable Multi-Agent Grid Hunt (Traps = Purple Triangles)")
+        self.root.title("IT3012 - Scalable Multi-Agent Grid Hunt")
 
         self.env = VisualGridHuntGame(
             width=width, 
@@ -162,24 +184,16 @@ class GridGameGUI:
                     self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text="W", fill="white",
                                             font=("Arial", 8, "bold"))
 
-        # 2. Draw traps (Purple Triangles) - EDITED SECTION
+        # 2. Draw traps (Purple Triangles)
         for tx, ty in self.env.traps:
-            # Calculate the bounding box of the cell
             cell_x1 = tx * self.cell_size
             cell_y1 = (self.env.height - 1 - ty) * self.cell_size
-            
-            # Define padding to keep triangle inside the cell boundaries
             pad = self.cell_size * 0.15
-            
-            # Calculate coordinates for an upward pointing triangle
-            # Vertex 1: Top Center
+
             v1_x, v1_y = cell_x1 + (self.cell_size / 2), cell_y1 + pad
-            # Vertex 2: Bottom Left
             v2_x, v2_y = cell_x1 + pad, cell_y1 + self.cell_size - pad
-            # Vertex 3: Bottom Right
             v3_x, v3_y = cell_x1 + self.cell_size - pad, cell_y1 + self.cell_size - pad
-            
-            # Draw the triangle using a polygon
+
             self.canvas.create_polygon(
                 v1_x, v1_y, v2_x, v2_y, v3_x, v3_y,
                 fill="#a855f7", outline="#7e22ce", width=2
@@ -214,8 +228,8 @@ class GridGameGUI:
 
         def step():
             if not self.env.is_done():
-                # Random walking agent for visualization
-                action = random.choice(['Up', 'Down', 'Left', 'Right'])
+                # Chooses from supported actions
+                action = random.choice(['move_forward', 'Up', 'Down', 'Left', 'Right'])
                 self.env.execute_action(action)
 
                 self.draw_grid()
@@ -231,6 +245,5 @@ class GridGameGUI:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    # Using 0 opponents to make traps easier to see during testing
     app = GridGameGUI(root, width=10, height=10, num_food=10, num_opponents=0)
     root.mainloop()
